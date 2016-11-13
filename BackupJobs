@@ -1,4 +1,10 @@
 #!/bin/bash
+
+#---------------------------------------------------------------------------
+#               Read values from config file
+#---------------------------------------------------------------------------
+
+
 typeset -A config # init array
 #config=( # set default values in config array
 #       [username]="root"
@@ -20,3 +26,90 @@ echo ${config[password]} # should be loaded from config file
 echo ${config[hostname]} # includes the "injected" code, but it's fine here
 echo ${config[PROMPT_COMMAND]} # also respects variables that you may not have
                # been looking for, but they're sandboxed inside the $config array
+
+
+               
+#---------------------------------------------------------------------------------------
+#                Mirror server system as a tarball (excluding data)
+#---------------------------------------------------------------------------------------
+
+#************* TO DO SET THIS TO RUN SAY MONTHLY ONLY BY CHECKING DAY OF MONTH *******
+
+# Tarball is created in addition to standard backup due to possible difficulty
+# with longer pathnames in some environments e.g. windows and cloud backups
+
+
+Log="$LogPath/$date.ArchServerTarBackupLog.txt"
+ErrorLog="$LogPath/$date.ArchServerTarBackupErrorLog.txt"
+
+DayOfMonth=$(date +%d)
+if [ $DayOfMonth -eq 1 ]
+then
+    # Back up to zipped file (overcomes issues with path names that are too long for network share)
+    # refer here for exclusions (arch wiki rsync backups)
+    # https://wiki.archlinux.org/index.php/Full_system_backup_with_rsync
+    # Also exclude non-hidden folders in home directories (folders starting with a alphabet not dot) - generally network mounts
+    tar --exclude={/dev,/proc,/sys,/tmp,/run,/srv,/mnt,/media,/lost+found} -czpvf $OS_TarDestinationFile $OS_SourcePath >$Log 2>$ErrorLog
+fi
+
+
+
+#-------------------------------------------------------------------------------------
+#                  Mirror server operating system (excluding data)
+#--------------------------------------------------------------------------------------
+
+Log="$LogPath/$date.ArchServerBackupLog.txt"
+ErrorLog="$LogPath/$date.ArchServerBackupErrorLog.txt"
+
+# https://wiki.archlinux.org/index.php/Full_system_backup_with_rsync
+rsync -aAXv --delete --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/srv/samba/*","/lost+found"} $OS_SourcePath $OS_DestinationPath >$Log 2>$ErrorLog
+
+
+
+#---------------------------------------------------------------------------------------
+#                   Create local mirror backup of data drive
+#---------------------------------------------------------------------------------------
+
+Log="$LogPath/$date.DataMirrorBackupLog.txt"
+ErrorLog="$LogPath/$date.DataMirrorBackupErrorLog.txt"
+
+rsync -aAXv --delete $MirrorSourcePath $MirrorDestinationPath > $Log 2> $ErrorLog
+
+
+#---------------------------------------------------------------------------------------
+#      Create Cloud copy (DON'T delete non-existant files on destination)
+#---------------------------------------------------------------------------------------
+
+
+# Timeout added to attempt to avoid exceding ISP data limits
+# Specify config file as that for user charl as this script is run by root (for which no rclone config has been set up)
+
+# Smaller files < 50M
+Log="$LogPath/$date.AmazonCopyBackupLog.txt"
+ErrorLog="$LogPath/$date.AmazonCopyBackupErrorLog.txt"
+timeout 2h rclone copy --checksum -v --max-size 50M --config=/home/charl/.rclone.conf --exclude-from $CloudExclusionFile $CloudCopySourcePath $CloudCopyDestinationPath >$Log 2>$ErrorLog
+
+# Larger files > 50M Copy one at a time (set transfers =1)
+#Log="$LogPath/$date.AmazonCopyBackupLargeFileLog.txt"
+#ErrorLog="$LogPath/$date.AmazonCopyBackupLargeFileErrorLog.txt"
+#timeout 2h rclone copy --checksum -v --min-size 50M --transfers 1 --config=/home/charl/.rclone.conf --exclude-from $CloudExclusionFile $CloudCopySourcePath $CloudCopyDestinationPath >$Log 2>$ErrorLog
+
+
+
+#---------------------------------------------------------------------------------------
+#      Create cloud mirror (delete non-existant files on destination)
+#---------------------------------------------------------------------------------------
+
+
+# Timeout added to attempt to avoid exceding ISP data limits
+# Specify config file as that for user charl as this script is run by root (for which no rclone config has been set up)
+
+# Smaller files < 50M
+Log="$LogPath/$date.AmazonMirrorBackupLog.txt"
+ErrorLog="$LogPath/$date.AmazonMirrorBackupErrorLog.txt"
+timeout 1h rclone sync --checksum -v --max-size 50M --config=/home/charl/.rclone.conf --exclude-from $CloudExclusionFile $CloudMirrorSourcePath $CloudMirrorDestinationPath >$Log 2>$ErrorLog
+
+# Larger files > 50M Copy one at a time (set transfers =1)
+# Log="$LogPath/$date.AmazonMirrorBackupLargeFileLog.txt"
+# ErrorLog="$LogPath/$date.AmazonMirrorBackupLargeFileErrorLog.txt"
+# timeout 2h rclone sync --checksum -v --min-size 50M --transfers 1 --config=/home/charl/.rclone.conf --exclude-from $CloudExclusionFile $CloudMirrorSourcePath $CloudMirrorDestinationPath >$Log 2>$ErrorLog
