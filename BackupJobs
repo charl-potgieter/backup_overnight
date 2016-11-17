@@ -1,5 +1,9 @@
 #!/bin/bash
 
+
+#!!!!!!!!!!!!!!!!!!!!!!!! INCOMPLETE WORK IN PROGRESS !!!!!!!!!!!!!!!!!!!!!!!!
+
+
 #==============================================================================
 #
 #       FILE:           BackupJobs
@@ -15,90 +19,57 @@
 #==============================================================================
 
 
+#====FUNCTION==================================================================
+#       Name:           system_backup
+#       Description:    Create a system mirror (excluding data)
+#       Paramaters:     None
+#       Returns:        None
+#==============================================================================
 
-##------------------------------------------------------------------------------
-##                       Read values from config file
-##------------------------------------------------------------------------------
-#
-#typeset -A config # init array
-##config=( # set default values in config array
-##       [username]="root"
-##       [password]=""
-##       [hostname]="localhost"
-##)
-#
-#while read line
-#do
-#        if echo $line | grep -F = &>/dev/null
-#        then
-#                varname=$(echo "$line" | cut -d '=' -f 1)
-#                config[$varname]=$(echo "$line" | cut -d '=' -f 2-)
-#        fi
-#done < myconfig.txt
-#
-#echo ${config[username]} # should be loaded from config file
-#echo ${config[password]} # should be loaded from config file
-#echo ${config[hostname]} # includes the "injected" code, but it's fine here
-#echo ${config[PROMPT_COMMAND]} # also respects variables that you may not have
-#           # been looking for, but they're sandboxed inside the $config array
-#
-#
-
-#------------------------------------------------------------------------------
-#                       Read script flags
-#------------------------------------------------------------------------------
-
-# http://wiki.bash-hackers.org/howto/getopts_tutorial
-
-while getopts "a" opt; do
-        case $opt in
-        a)
-                echo "-a was triggered!" # >&2
-                ;;
-        \?)
-                echo "Invalid option: -$OPTARG" # >&2
-                ;;
-        esac
-done
+system_backup() {
+     
+# Refer here for exclusions (arch wiki rsync backups)
+# https://wiki.archlinux.org/index.php/Full_system_backup_with_rsync
+       
+        Log="$LogPath/$date.ArchServerBackupLog.txt"
+        ErrorLog="$LogPath/$date.ArchServerBackupErrorLog.txt"
+        
+        rsync -aAXv --delete --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*",\
+                "/run/*","/mnt/*","/media/*","/srv/samba/*","/lost+found"} \
+                $OS_SourcePath $OS_DestinationPath >$Log 2>$ErrorLog
+}
 
 
-##------------------------------------------------------------------------------
-##                Mirror server system as a tarball (excluding data)
-##------------------------------------------------------------------------------
-#
-#
-## Tarball is created in addition to standard backup due to possible difficulty
-## with longer pathnames in some environments e.g. windows and cloud backups
-#
-#
-#Log="$LogPath/$date.ArchServerTarBackupLog.txt"
-#ErrorLog="$LogPath/$date.ArchServerTarBackupErrorLog.txt"
-#
-#DayOfMonth=$(date +%d)
-#if [ $DayOfMonth -eq 1 ]
-#then
-#    # refer here for exclusions (arch wiki rsync backups)
-#    # https://wiki.archlinux.org/index.php/Full_system_backup_with_rsync
-#    tar --exclude={/dev,/proc,/sys,/tmp,/run,/srv,/mnt,/media,/lost+found} \
-#            -czpvf $OS_TarDestinationFile $OS_SourcePath >$Log 2>$ErrorLog
-#fi
-#
-#
-#
-##------------------------------------------------------------------------------
-##                  Mirror server operating system (excluding data)
-##------------------------------------------------------------------------------
-#
-#Log="$LogPath/$date.ArchServerBackupLog.txt"
-#ErrorLog="$LogPath/$date.ArchServerBackupErrorLog.txt"
-#
-## https://wiki.archlinux.org/index.php/Full_system_backup_with_rsync
-#rsync -aAXv --delete --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*",\
-#        "/mnt/*","/media/*","/srv/samba/*","/lost+found"} $OS_SourcePath \
-#        $OS_DestinationPath >$Log 2>$ErrorLog
-#
-#
-#
+#====FUNCTION==================================================================
+#       Name:           system_tarball
+#       Description:    Mirror system as a tarball (excluding data)
+#       Paramaters:     None
+#       Returns:        None
+#==============================================================================
+
+# Tarball is created in addition to standard backup due to possible difficulty
+# with longer pathnames in some environments e.g. windows and cloud backups
+# refer here for exclusions (arch wiki rsync backups)
+# https://wiki.archlinux.org/index.php/Full_system_backup_with_rsync
+# /srv is also excluded as it contains the mounted files used for
+# samba share
+
+system_tarball() {
+
+        Log="$LogPath/$date.ArchServerTarBackupLog.txt"
+        ErrorLog="$LogPath/$date.ArchServerTarBackupErrorLog.txt"
+        
+        DayOfMonth=$(date +%d)
+        if [ $DayOfMonth -eq 1 ]
+        then
+                tar --exclude="{/dev,/proc,/sys,/tmp,/run,/srv,/mnt,/media,\
+                        /lost+found}" \
+                        -czpvf $OS_TarDestinationFile $OS_SourcePath \
+                        >$Log 2>$ErrorLog
+        fi
+
+}
+
 ##------------------------------------------------------------------------------
 ##                   Create local mirror backup of data drive
 ##------------------------------------------------------------------------------
@@ -157,3 +128,63 @@ done
 ## timeout 2h rclone sync --checksum -v --min-size 50M --transfers 1 \
 #        #--config=/home/charl/.rclone.conf --exclude-from $CloudExclusionFile \
 #        #$CloudMirrorSourcePath $CloudMirrorDestinationPath >$Log 2>$ErrorLog
+
+##------------------------------------------------------------------------------
+##                       Read values from config file
+##------------------------------------------------------------------------------
+#
+#typeset -A config # init array
+##config=( # set default values in config array
+##       [username]="root"
+##       [password]=""
+##       [hostname]="localhost"
+##)
+#
+#while read line
+#do
+#        if echo $line | grep -F = &>/dev/null
+#        then
+#                varname=$(echo "$line" | cut -d '=' -f 1)
+#                config[$varname]=$(echo "$line" | cut -d '=' -f 2-)
+#        fi
+#done < myconfig.txt
+#
+#echo ${config[username]} # should be loaded from config file
+#echo ${config[password]} # should be loaded from config file
+#echo ${config[hostname]} # includes the "injected" code, but it's fine here
+#echo ${config[PROMPT_COMMAND]} # also respects variables that you may not have
+#           # been looking for, but they're sandboxed inside the $config array
+#
+#
+
+#------------------------------------------------------------------------------
+#                       Read script flags
+#------------------------------------------------------------------------------
+
+# http://wiki.bash-hackers.org/howto/getopts_tutorial
+
+while getopts "stlcm" opt; do
+        case $opt in
+        s)
+                system_backup
+                ;;
+        t)
+                system_tarball
+                ;;
+        l)
+                echo "-l was triggered!" # >&2
+                ;;
+        c)
+                echo "-c was triggered!" # >&2
+                ;;
+        m)
+                echo "-m was triggered!" # >&2
+                ;;
+        \?)
+                echo "Invalid option: -$OPTARG" # >&2
+                ;;
+        esac
+done
+
+
+
