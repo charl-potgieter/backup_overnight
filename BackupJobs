@@ -31,13 +31,10 @@
 
 read_config() {
 
-        typeset -A config # init array
-        #config=( # set default values in config array
-        #       [username]="root"
-        #       [password]=""
-        #       [hostname]="localhost"
-        #)
+        ConfigFile="/srv/samba/Documents_Charl/Computer_Technical/Programming_Complete/Bash/backup_overnight/backup_overnight.conf"
         
+              
+        # read config file into array which has been initialised in main
         while read line
         do
                 if echo $line | grep -F = &>/dev/null
@@ -45,13 +42,8 @@ read_config() {
                         varname=$(echo "$line" | cut -d '=' -f 1)
                         config[$varname]=$(echo "$line" | cut -d '=' -f 2-)
                 fi
-        done < myconfig.txt
+        done < $ConfigFile
         
-        echo ${config[username]} # should be loaded from config file
-        echo ${config[password]} # should be loaded from config file
-        echo ${config[hostname]} # includes the "injected" code, but it's fine here
-        echo ${config[PROMPT_COMMAND]} # also respects variables that you may not have
-                   # been looking for, but they're sandboxed inside the $config array
 }
 
 
@@ -61,6 +53,7 @@ read_config() {
 #====FUNCTION==================================================================
 #       Name:           system_backup
 #       Description:    Create a system mirror (excluding data)
+
 #       Paramaters:     None
 #       Returns:        None
 #==============================================================================
@@ -203,51 +196,62 @@ mirror_data_cloud () {
 
 #==============================================================================
 #
-#
 #                               MAIN PROGRAM
-#
 #
 #==============================================================================
 
 
+date=$(date "+%m%d")
+
+# init configuration array and read data from config file
+typeset -A config
 read_config
+
+
+##!!! !!!!! NEED TO CHECK FOR ANY EMPTY CONFIG PARAMATERS AND ABORT IF THEY EXIST !!!!!!!!!!!!!!!!!!!!
+
+echo ${config[LogPath]}
+echo ${config[OS_SourcePath]}
+echo ${config[OS_DestinationPath]}
+echo "This is testing :"
+echo ${config[Testing]}
 
 
 # Read script flags and execute individual processes if flags exist
 # http://wiki.bash-hackers.org/howto/getopts_tutorial
 FlagsFound=0
-while getopts "stlcm" opt; do
-        case $opt in
-        s)
-                system_mirror
-                FlagsFound=1
-                ;;
-        t)
-                system_mirror_tarball
-                FlagsFound=1
-                ;;
-        l)
-                mirror_data_local
-                FlagsFound=1
-                ;;
-        c)
-                copy_data_cloud
-                FlagsFound=1
-                ;;
-        m)
-                mirror_data_cloud
-                FlagsFound=1
-                ;;
-        \?)
-                echo "Invalid option: -$OPTARG" # >&2
-                exit 1
-                ;;
-        esac
-done
+#while getopts "stlcm" opt; do
+#        case $opt in
+#        s)
+#                system_mirror
+#                FlagsFound=1
+#                ;;
+#        t)
+#                system_mirror_tarball
+#                FlagsFound=1
+#                ;;
+#        l)
+#                mirror_data_local
+#                FlagsFound=1
+#                ;;
+#        c)
+#                copy_data_cloud
+#                FlagsFound=1
+#                ;;
+#        m)
+#                mirror_data_cloud
+#                FlagsFound=1
+#                ;;
+#        \?)
+#                echo "Invalid option: -$OPTARG" # >&2
+#                exit 1
+#                ;;
+#        esac
+#done
 
 
 # Run all scripts if no flags specified
-if [ $FlagsFound -eq "0" ]; then
+if [ $FlagsFound -eq 0 ]; then
           echo "Run all scripts"
 fi
 
