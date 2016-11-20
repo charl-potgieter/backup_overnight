@@ -18,6 +18,18 @@
 #
 #==============================================================================
 
+# !!!!!!!!!!!!!!!!!!!!!!!!! TO DO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#
+# 
+# (2) Send any errors to stderr rather than just echo
+# (3) Move backup exclusions to config fike
+# (4) Move size exclusiont to config file
+# (5) Move encrypt exclusion to config file
+# (6) Add any new compulsory configs to check_config function
+#
+#
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 
 
@@ -44,6 +56,51 @@ read_config() {
                 fi
         done < $ConfigFile
         
+}
+
+
+
+
+#====FUNCTION==================================================================
+#       Name:           check_config
+#       Description:    Checks for missing configuration variables
+#       Paramaters:     None
+#       Returns:        None
+#==============================================================================
+
+check_config() {
+
+# Ensures there are no missing config path paramaters as this could have 
+# unwanted impacts e.g. if rsync attempts to copy to an empty path
+
+
+        CompulsoryConfigs=("LogPath" \
+                "OS_SourcePath" \
+                "OS_DestinationPath" \
+                "OS_TarDestinationFile" \
+                "MirrorSourcePath" \
+                "MirrorDestinationPath" \
+                "CloudExclusionFile" \
+                "CloudCopySourcePath" \
+                "CloudCopyDestinationPath" \
+                "CloudMirrorSourcePath" \
+                "CloudMirrorDestinationPath")
+
+        MissingConfigs=()
+
+        for k in ${CompulsoryConfigs[@]}; do
+                if [ -z "${config[$k]}" ]; then
+                        MissingConfigs+=($k)
+                fi
+        done
+        
+        if [ ${#MissingConfigs[@]} -gt 0 ]; then
+                echo "Missing keys are: "
+                printf "%s\t" "${MissingConfigs[@]}"
+                echo ""
+                exit 1
+        fi
+
 }
 
 
@@ -203,18 +260,18 @@ mirror_data_cloud () {
 
 date=$(date "+%m%d")
 
-# init configuration array and read data from config file
+# init configuration array and read and check data from config file
 typeset -A config
 read_config
+check_config
 
 
-##!!! !!!!! NEED TO CHECK FOR ANY EMPTY CONFIG PARAMATERS AND ABORT IF THEY EXIST !!!!!!!!!!!!!!!!!!!!
 
-echo ${config[LogPath]}
-echo ${config[OS_SourcePath]}
-echo ${config[OS_DestinationPath]}
-echo "This is testing :"
-echo ${config[Testing]}
+#echo ${config[LogPath]}
+#echo ${config[OS_SourcePath]}
+#echo ${config[OS_DestinationPath]}
+#echo "This is testing :"
+#echo ${config[Testing]}
 
 
 # Read script flags and execute individual processes if flags exist
