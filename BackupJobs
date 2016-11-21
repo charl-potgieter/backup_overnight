@@ -20,7 +20,7 @@
 
 # !!!!!!!!!!!!!!!!!!!!!!!!! TO DO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
-# 
+# (1) Carefully check all paramaters in system mirror before running 
 # (2) Send any errors to stderr rather than just echo
 # (3) Move backup exclusions to config fike
 # (4) Move size exclusiont to config file
@@ -77,7 +77,7 @@ check_config() {
         CompulsoryConfigs=("LogPath" \
                 "OS_SourcePath" \
                 "OS_DestinationPath" \
-                "OS_TarDestinationFile" \
+                "OS_TarDestinationPath" \
                 "MirrorSourcePath" \
                 "MirrorDestinationPath" \
                 "CloudExclusionFile" \
@@ -120,12 +120,14 @@ system_mirror() {
 # Refer here for exclusions (arch wiki rsync backups)
 # https://wiki.archlinux.org/index.php/Full_system_backup_with_rsync
        
-        Log="$LogPath/$date.ArchServerBackupLog.txt"
-        ErrorLog="$LogPath/$date.ArchServerBackupErrorLog.txt"
+        Log="${config[LogPath]}/$date.ArchServerBackupLog.txt"
+        ErrorLog="${config[LogPath]}/$date.ArchServerBackupErrorLog.txt"
         
-        rsync -aAXv --delete --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*",\
-                "/run/*","/mnt/*","/media/*","/srv/samba/*","/lost+found"} \
-                $OS_SourcePath $OS_DestinationPath >$Log 2>$ErrorLog
+        echo $Log
+        echo $ErrorLog
+
+        # rsync -aAXv --delete --exclude={${config[OS_Exclusions]}} \
+        #        ${config[OS_SourcePath]} ${config[OS_DestinationPath]} >$Log 2>$ErrorLog
 }
 
 
@@ -150,7 +152,10 @@ system_mirror_tarball() {
 
         Log="$LogPath/$date.ArchServerTarBackupLog.txt"
         ErrorLog="$LogPath/$date.ArchServerTarBackupErrorLog.txt"
-        
+        OS_DestinationFile=${config[OS_DestinationPath]}/$date.\
+                ArchServerBackup.tar.gz
+
+
         DayOfMonth=$(date +%d)
         if [ $DayOfMonth -eq 1 ]
         then
@@ -265,46 +270,37 @@ typeset -A config
 read_config
 check_config
 
-
-
-#echo ${config[LogPath]}
-#echo ${config[OS_SourcePath]}
-#echo ${config[OS_DestinationPath]}
-#echo "This is testing :"
-#echo ${config[Testing]}
-
-
 # Read script flags and execute individual processes if flags exist
 # http://wiki.bash-hackers.org/howto/getopts_tutorial
 FlagsFound=0
-#while getopts "stlcm" opt; do
-#        case $opt in
-#        s)
-#                system_mirror
-#                FlagsFound=1
-#                ;;
-#        t)
-#                system_mirror_tarball
-#                FlagsFound=1
-#                ;;
-#        l)
-#                mirror_data_local
-#                FlagsFound=1
-#                ;;
-#        c)
-#                copy_data_cloud
-#                FlagsFound=1
-#                ;;
-#        m)
-#                mirror_data_cloud
-#                FlagsFound=1
-#                ;;
-#        \?)
-#                echo "Invalid option: -$OPTARG" # >&2
-#                exit 1
-#                ;;
-#        esac
-#done
+while getopts "stlcm" opt; do
+        case $opt in
+        s)
+                system_mirror
+                FlagsFound=1
+                ;;
+       # t)
+       #         system_mirror_tarball
+       #         FlagsFound=1
+       #         ;;
+       # l)
+       #         mirror_data_local
+       #         FlagsFound=1
+       #         ;;
+       # c)
+       #         copy_data_cloud
+       #         FlagsFound=1
+       #         ;;
+       # m)
+       #         mirror_data_cloud
+       #         FlagsFound=1
+       #         ;;
+        \?)
+                echo "Invalid option: -$OPTARG" # >&2
+                exit 1
+                ;;
+        esac
+done
 
 
 # Run all scripts if no flags specified
@@ -312,3 +308,4 @@ if [ $FlagsFound -eq 0 ]; then
           echo "Run all scripts"
 fi
 
+echo ${config[SystemExclusions]}
