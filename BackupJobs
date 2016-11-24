@@ -20,6 +20,7 @@
 
 # !!!!!!!!!!!!!!!!!!!!!!!!! TO DO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
+# (0) Work on passing exclusions saved as a variable to rsync (see test_sub)
 # (1) Carefully check all paramaters in system mirror before running 
 # (2) Send any errors to stderr rather than just echo
 # (3) Move backup exclusions to config fike
@@ -30,6 +31,40 @@
 #
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+
+
+
+#====FUNCTION==================================================================
+#       Name:           list_to_array
+#       Description:    converts comma seperated list to array
+#       Paramater 1:    comma seperated string to be converted
+#       Returns:        array is passe as stdout
+#==============================================================================
+
+list_to_array() {
+
+        # This function is created to work around fact that brace expansion
+        # takes place before variable expansion so including a variable inside
+        # braces does not work.  As an alternative an array can be passed as
+        # paramater
+
+
+        # replace comma seperated list wth spaces (first save $1 into a
+        # seperate variable as I can't get comma space substition working
+        # with 1.  Bash thinks this is a number rather than a variable?
+        # ($1 represents paramater passed to function)
+        comma_seperated_list=$1
+        space_seperated_list=${comma_seperated_list//,/ }                
+
+        args=()
+        for  i in $space_seperated_list; do
+                args+=( "$i" )
+        done
+       
+        #return the array via stdout 
+        echo  "${args[@]}"
+
+}
 
 
 
@@ -122,12 +157,11 @@ system_mirror() {
        
         Log="${config[LogPath]}/$date.ArchServerBackupLog.txt"
         ErrorLog="${config[LogPath]}/$date.ArchServerBackupErrorLog.txt"
-        
-        echo $Log
-        echo $ErrorLog
+      
+        # Save as variable as double {{ in the exclude below is causing issues 
 
-        # rsync -aAXv --delete --exclude={${config[OS_Exclusions]}} \
-        #        ${config[OS_SourcePath]} ${config[OS_DestinationPath]} >$Log 2>$ErrorLog
+        # rsync -aAXv --delete --exclude=$(eval echo ${config[OS_Exclusions]}) \
+        #        ${config[OS_SourcePath]} ${config[OS_DestinationPath]} # >$Log 2>$ErrorLog
 }
 
 
@@ -256,6 +290,29 @@ mirror_data_cloud () {
 }
 
 
+
+
+
+test_sub() {
+
+        # output the paramter
+        echo $1
+
+        excl_dir="${config[OS_Exclusions]}"
+
+        # replace comma seperated list wth spaces
+        excl_dir=${excl_dir//,/ }                
+
+        # Emulate brace sequence expression using an array.
+        args=()
+        for  i in $excl_dir; do
+                args+=( "$i" )
+        done
+        
+        ls "${args[@]}"
+
+  }
+
 #==============================================================================
 #
 #                               MAIN PROGRAM
@@ -305,7 +362,9 @@ done
 
 # Run all scripts if no flags specified
 if [ $FlagsFound -eq 0 ]; then
-          echo "Run all scripts"
+        echo "Run all scripts"
 fi
 
-echo ${config[SystemExclusions]}
+# Test list_to_array
+test=$(list_to_array ${config[OS_Exclusions]})
+echo $test
