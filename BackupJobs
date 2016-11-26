@@ -52,30 +52,30 @@
 #       Returns:        array is passed as stdout
 #==============================================================================
 
-list_to_array() {
-
-        # This function is created to work around fact that brace expansion
-        # takes place before variable expansion so including a variable inside
-        # braces does not work.  As an alternative an array can be passed as
-        # paramater
-
-
-        # replace comma seperated list wth spaces (first save $1 into a
-        # seperate variable as I can't get comma space substition working
-        # with 1.  Bash thinks this is a number rather than a variable?
-        # ($1 represents paramater passed to function)
-        comma_seperated_list=$1
-        space_seperated_list=${comma_seperated_list//,/ }                
-
-        args=()
-        for  i in $space_seperated_list; do
-                args+=( "$i" )
-        done
-       
-        #return the array via stdout 
-        echo  "${args[@]}"
-
-}
+#list_to_array() {
+#
+#        # This function is created to work around fact that brace expansion
+#        # takes place before variable expansion so including a variable inside
+#        # braces does not work.  As an alternative an array can be passed as
+#        # paramater
+#
+#
+#        # replace comma seperated list wth spaces (first save $1 into a
+#        # seperate variable as I can't get comma space substition working
+#        # with 1.  Bash thinks this is a number rather than a variable?
+#        # ($1 represents paramater passed to function)
+#        comma_seperated_list=$1
+#        space_seperated_list=${comma_seperated_list//,/ }                
+#
+#        args=()
+#        for  i in $space_seperated_list; do
+#                args+=( "$i" )
+#        done
+#       
+#        #return the array via stdout 
+#        echo  "${args[@]}"
+#
+#}
 
 
 
@@ -165,21 +165,22 @@ system_mirror() {
      
         Log="${config[LogPath]}/$date.ArchServerBackupLog.txt"
         ErrorLog="${config[LogPath]}/$date.ArchServerBackupErrorLog.txt"
-      
+
+        # Read comma seperated path exclusions and convert to space separated
+        # list      
         excl_list=${config[OS_Exclusions]}
         excl_list=${excl_list//,/ }
 
+        # Create an exclusion array.  Variable expanstion takes place after
+        # brace expanion so can't use a brace expansion solution
         excl_array=()
         for  i in $excl_list; do
                 excl_array+=(--exclude="$i" )
         done
  
-#        echo ${config[OS_SourcePath]} ${config[OS_DestinationPath]}   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        echo "${excl_array[@]}"                                        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        
-        ## !!!!!!!!ADD THE --delete OPTION BACK IN AND UNCOMMENT LOG RE-DIRECTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
         rsync -aAXv --delete "${excl_array[@]}" \
-                ${config[OS_SourcePath]} ${config[OS_DestinationPath]} #\ >$Log 2>$ErrorLog
+                ${config[OS_SourcePath]} ${config[OS_DestinationPath]} \
+                >$Log 2>$ErrorLog
 }
 
 
