@@ -32,13 +32,24 @@
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
+#BACKUP_EXCLUDES=()
+#exclude () {
+#        while (( $# )) do
+#                BACKUP_EXCLUDES+=(--exclude="$1")
+#                shift
+#        done
+#}
+
+# exclude /proc /dev /mnt /media
+# exclude "/lost+found"
+# rsync -ruvz "${BACKUP_EXCLUDES[@]}" / /some/backup/path
 
 
 #====FUNCTION==================================================================
 #       Name:           list_to_array
 #       Description:    converts comma seperated list to array
 #       Paramater 1:    comma seperated string to be converted
-#       Returns:        array is passe as stdout
+#       Returns:        array is passed as stdout
 #==============================================================================
 
 list_to_array() {
@@ -152,16 +163,23 @@ check_config() {
 
 system_mirror() {
      
-# Refer here for exclusions (arch wiki rsync backups)
-# https://wiki.archlinux.org/index.php/Full_system_backup_with_rsync
-       
         Log="${config[LogPath]}/$date.ArchServerBackupLog.txt"
         ErrorLog="${config[LogPath]}/$date.ArchServerBackupErrorLog.txt"
       
-        # Save as variable as double {{ in the exclude below is causing issues 
+        excl_list=${config[OS_Exclusions]}
+        excl_list=${excl_list//,/ }
 
-        # rsync -aAXv --delete --exclude=$(eval echo ${config[OS_Exclusions]}) \
-        #        ${config[OS_SourcePath]} ${config[OS_DestinationPath]} # >$Log 2>$ErrorLog
+        excl_array=()
+        for  i in $excl_list; do
+                excl_array+=(--exclude="$i" )
+        done
+ 
+#        echo ${config[OS_SourcePath]} ${config[OS_DestinationPath]}   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        echo "${excl_array[@]}"                                        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
+        ## !!!!!!!!ADD THE --delete OPTION BACK IN AND UNCOMMENT LOG RE-DIRECTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
+        rsync -aAXv --delete "${excl_array[@]}" \
+                ${config[OS_SourcePath]} ${config[OS_DestinationPath]} #\ >$Log 2>$ErrorLog
 }
 
 
@@ -365,6 +383,3 @@ if [ $FlagsFound -eq 0 ]; then
         echo "Run all scripts"
 fi
 
-# Test list_to_array
-test=$(list_to_array ${config[OS_Exclusions]})
-echo $test
