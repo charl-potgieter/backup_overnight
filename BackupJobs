@@ -87,70 +87,68 @@
 #       Returns:        None
 #==============================================================================
 
-read_config() {
-
-        ConfigFile="/srv/samba/Documents_Charl/Computer_Technical/Programming_Complete/Bash/backup_overnight/backup_overnight.conf"
-        
-              
-        # read config file into array which has been initialised in main
-        while read line
-        do
-                if echo $line | grep -F = &>/dev/null
-                then
-                        varname=$(echo "$line" | cut -d '=' -f 1)
-                        config[$varname]=$(echo "$line" | cut -d '=' -f 2-)
-                fi
-        done < $ConfigFile
-        
-}
-
-
-
-
-#====FUNCTION==================================================================
-#       Name:           check_config
-#       Description:    Checks for missing configuration variables
-#       Paramaters:     None
-#       Returns:        None
-#==============================================================================
-
-check_config() {
-
-# Ensures there are no missing config path paramaters as this could have 
-# unwanted impacts e.g. if rsync attempts to copy to an empty path
-
-
-        CompulsoryConfigs=("LogPath" \
-                "OS_SourcePath" \
-                "OS_DestinationPath" \
-                "OS_TarDestinationPath" \
-                "MirrorSourcePath" \
-                "MirrorDestinationPath" \
-                "CloudExclusionFile" \
-                "CloudCopySourcePath" \
-                "CloudCopyDestinationPath" \
-                "CloudMirrorSourcePath" \
-                "CloudMirrorDestinationPath")
-
-        MissingConfigs=()
-
-        for k in ${CompulsoryConfigs[@]}; do
-                if [ -z "${config[$k]}" ]; then
-                        MissingConfigs+=($k)
-                fi
-        done
-        
-        if [ ${#MissingConfigs[@]} -gt 0 ]; then
-                echo "Missing keys are: "
-                printf "%s\t" "${MissingConfigs[@]}"
-                echo ""
-                exit 1
-        fi
-
-}
-
-
-
+#read_config() {
+#
+#        ConfigFile="/srv/samba/Documents_Charl/Computer_Technical/Programming_Complete/Bash/backup_overnight/backup_overnight.conf"
+#        
+#              
+#        # read config file into array which has been initialised in main
+#        while read line
+#        do
+#                if echo $line | grep -F = &>/dev/null
+#                then
+#                        varname=$(echo "$line" | cut -d '=' -f 1)
+#                        config[$varname]=$(echo "$line" | cut -d '=' -f 2-)
+#                fi
+#        done < $ConfigFile
+#        
+#}
+#
+#
+#
+#
+##====FUNCTION==================================================================
+##       Name:           check_config
+##       Description:    Checks for missing configuration variables
+##       Paramaters:     None
+##       Returns:        None
+##==============================================================================
+#
+#check_config() {
+#
+## Ensures there are no missing config path paramaters as this could have 
+## unwanted impacts e.g. if rsync attempts to copy to an empty path
+#
+#
+#        CompulsoryConfigs=("LogPath" \
+#                "OS_SourcePath" \
+#                "OS_DestinationPath" \
+#                "OS_TarDestinationPath" \
+#                "MirrorSourcePath" \
+#                "MirrorDestinationPath" \
+#                "CloudExclusionFile" \
+#                "CloudCopySourcePath" \
+#                "CloudCopyDestinationPath" \
+#                "CloudMirrorSourcePath" \
+#                "CloudMirrorDestinationPath")
+#
+#        MissingConfigs=()
+#
+#        for k in ${CompulsoryConfigs[@]}; do
+#                if [ -z "${config[$k]}" ]; then
+#                        MissingConfigs+=($k)
+#                fi
+#        done
+#        
+#        if [ ${#MissingConfigs[@]} -gt 0 ]; then
+#                echo "Missing keys are: "
+#                printf "%s\t" "${MissingConfigs[@]}"
+#                echo ""
+#                exit 1
+#        fi
+#
+#}
+#
 
 
 #====FUNCTION==================================================================
@@ -163,24 +161,20 @@ check_config() {
 
 system_mirror() {
      
-        Log="${config[LogPath]}/$date.ArchServerBackupLog.txt"
-        ErrorLog="${config[LogPath]}/$date.ArchServerBackupErrorLog.txt"
-
-        # Read comma seperated path exclusions and convert to space separated
-        # list      
-        excl_list=${config[OS_Exclusions]}
-        excl_list=${excl_list//,/ }
+        Log="$LogPath/$date.ArchServerBackupLog.txt"
+        ErrorLog="$LogPath/$date.ArchServerBackupErrorLog.txt"
 
         # Create an exclusion array.  Variable expanstion takes place after
         # brace expanion so can't use a brace expansion solution
         excl_array=()
-        for  i in $excl_list; do
+        for  i in $OS_Exclusions; do
                 excl_array+=(--exclude="$i" )
         done
- 
-        rsync -aAXv --delete "${excl_array[@]}" \
-                ${config[OS_SourcePath]} ${config[OS_DestinationPath]} \
-                >$Log 2>$ErrorLog
+
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ADD BACK THE --delete flag !!!!!!!!!!!!!!!!!!!!!!!!!! 
+#        rsync -aAXv  "${excl_array[@]}" \
+#                $OS_SourcePath $OS_DestinationPath \
+#                >$Log 2>$ErrorLog
 }
 
 
@@ -312,25 +306,72 @@ mirror_data_cloud () {
 
 
 
-test_sub() {
+#test_sub() {
+#
+#        # output the paramter
+#        echo $1
+#
+#        excl_dir="${config[OS_Exclusions]}"
+#
+#        # replace comma seperated list wth spaces
+#        excl_dir=${excl_dir//,/ }                
+#
+#        # Emulate brace sequence expression using an array.
+#        args=()
+#        for  i in $excl_dir; do
+#                args+=( "$i" )
+#        done
+#        
+#        ls "${args[@]}"
+#
+#  }
 
-        # output the paramter
-        echo $1
 
-        excl_dir="${config[OS_Exclusions]}"
 
-        # replace comma seperated list wth spaces
-        excl_dir=${excl_dir//,/ }                
+#==============================================================================
+#
+#                       Configuration Options
+#
+#==============================================================================
 
-        # Emulate brace sequence expression using an array.
-        args=()
-        for  i in $excl_dir; do
-                args+=( "$i" )
-        done
-        
-        ls "${args[@]}"
+# For both standard and error logs
+LogPath=/srv/samba/Documents_Charl/Computer_Technical/Logs
 
-  }
+#Path details for mirror backup of system itself excluding data
+# ***** THIS IS A MIRROR FILES IN DESTINATION NOT IN SOURCE WILL BE DELETED ***
+OS_SourcePath=/
+OS_DestinationPath=/srv/samba/Documents_Charl/010_EncryptForCloudBackup\
+        /ArchSystemBackups/ArchServer
+OS_TarDestinationPath=/srv/samba/Documents_Charl/010_EncryptForCloudBackup\
+        /ArchSystemBackups/ArchServerTarballs/$date.ArchServerBackup.tar.gz
+
+
+# Path details for data mirror
+# There is no data copy as this is seperately taken care of by rsnapshot
+# ***** THIS IS A MIRROR FILES IN DESTINATION NOT IN SOURCE WILL BE DELETED ***
+MirrorSourcePath=/srv/samba/
+MirrorDestinationPath=/mnt/backups/mirror_overnight
+
+#File containing details of paths to be excluded from cloud backup
+CloudExclusionFile=/srv/samba/Documents_Charl/Computer_Technical\
+        /Programming_Complete/Bash/OvernightJobs/CloudBackupExclusions.txt
+
+#Path details for cloud copy (target does not get deleted even if it is not
+# in source)
+CloudCopySourcePath=/srv/samba/
+CloudCopyDestinationPath=AmazonDrive:Backups_Copy
+
+#Path details for cloud source
+CloudMirrorSourcePath=/srv/samba/
+CloudMirrorDestinationPath=AmazonDrive:Backups_Mirror
+
+
+# SPACE sperated list
+# list Exclusions below are modified from Arch Wiki
+# https://wiki.archlinux.org/index.php/Full_system_backup_with_rsync
+OS_Exclusions="/dev /proc /sys /tmp /run /mnt /media /srv/samba/ /lost+found"
+
+
 
 #==============================================================================
 #
