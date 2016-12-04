@@ -20,7 +20,7 @@
 
 # !!!!!!!!!!!!!!!!!!!!!!!!! TO DO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
-# (1) Work on other subs similar to way system_mirror was completed
+# (1) Work on cloud subs similar to way system_mirror was completed
 # (4) Move size exclusiont to configuration options
 #
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -154,8 +154,8 @@ mirror_data_local() {
         Log="$LogPath/$date.DataMirrorBackupLog.txt"
         ErrorLog="$LogPath/$date.DataMirrorBackupErrorLog.txt"
 
-        rsync -aAXv --delete $MirrorSourcePath $MirrorDestinationPath > \
-                $Log 2> $ErrorLog
+        rsync -aAXv --delete  $MirrorSourcePath $MirrorDestinationPath\
+                > $Log 2> $ErrorLog
 
 }
         
@@ -174,15 +174,17 @@ mirror_data_local() {
 copy_data_cloud () {
 
         # Timeout added to attempt to avoid exceding ISP data limits
-        # Specify config file as that for user charl as this script is run by root
-        # (for which no rclone config has been set up)
+        # Specify config file as that for user charl as this script is run by
+        # root (for which no rclone config has been set up)
         
         # Smaller files < 50M
         Log="$LogPath/$date.AmazonCopyBackupLog.txt"
         ErrorLog="$LogPath/$date.AmazonCopyBackupErrorLog.txt"
         timeout 2h rclone copy --checksum -v --max-size 50M \
-                --config=/home/charl/.rclone.conf --exclude-from $CloudExclusionFile \
-                $CloudCopySourcePath $CloudCopyDestinationPath >$Log 2>$ErrorLog
+                --config=/home/charl/.rclone.conf \
+                --exclude-from $CloudExclusionFile \
+                $CloudCopySourcePath $CloudCopyDestinationPath \
+                >$Log 2>$ErrorLog
         
         # Larger files > 50M Copy one at a time (set transfers =1)
         #Log="$LogPath/$date.AmazonCopyBackupLargeFileLog.txt"
@@ -207,15 +209,17 @@ copy_data_cloud () {
 
 mirror_data_cloud () {
         # Timeout added to attempt to avoid exceding ISP data limits
-        # Specify config file as that for user charl as this script is run by root 
-        # (for which no rclone config has been set up)
+        # Specify config file as that for user charl as this script is run by
+        # root (for which no rclone config has been set up)
         
         # Smaller files < 50M
         Log="$LogPath/$date.AmazonMirrorBackupLog.txt"
         ErrorLog="$LogPath/$date.AmazonMirrorBackupErrorLog.txt"
         timeout 1h rclone sync --checksum -v --max-size 50M \
-                --config=/home/charl/.rclone.conf --exclude-from $CloudExclusionFile \
-                $CloudMirrorSourcePath $CloudMirrorDestinationPath >$Log 2>$ErrorLog
+                --config=/home/charl/.rclone.conf \
+                --exclude-from $CloudExclusionFile \
+                $CloudMirrorSourcePath $CloudMirrorDestinationPath \
+                >$Log 2>$ErrorLog
         
         # Larger files > 50M Copy one at a time (set transfers =1)
         # Log="$LogPath/$date.AmazonMirrorBackupLargeFileLog.txt"
@@ -225,10 +229,6 @@ mirror_data_cloud () {
                 #$CloudMirrorSourcePath $CloudMirrorDestinationPath >$Log 2>$ErrorLog
 
 }
-
-
-
-
 
 
 
@@ -257,10 +257,10 @@ while getopts "stlcm" opt; do
                 system_mirror_tarball
                 FlagsFound=1
                 ;;
-       # l)
-       #         mirror_data_local
-       #         FlagsFound=1
-       #         ;;
+        l)
+                mirror_data_local
+                FlagsFound=1
+                ;;
        # c)
        #         copy_data_cloud
        #         FlagsFound=1
