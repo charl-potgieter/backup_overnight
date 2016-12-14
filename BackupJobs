@@ -12,7 +12,7 @@
 #
 #       DESCRIPTION:    Runs various local, cloud and system backups
 #
-#       DEPENDENCIES:   rclone, rsync
+#       DEPENDENCIES:   rsync
 #       
 #       AUTHOR:         Charl Potgieter
 #
@@ -20,8 +20,7 @@
 
 # !!!!!!!!!!!!!!!!!!!!!!!!! TO DO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
-# (1) Work on cloud subs similar to way system_mirror was completed
-# (4) Move size exclusiont to configuration options
+#       TESTING
 #
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -34,39 +33,24 @@
 LogPath=/srv/samba/Documents_Charl/Computer_Technical/Logs
 
 #Path details for mirror backup of system itself excluding data
-# ***** THIS IS A MIRROR FILES IN DESTINATION NOT IN SOURCE WILL BE DELETED ***
+# ***** THIS IS A MIRROR FILES IN DESTINATION NOT IN SOURCE WILL BE ***********
+# ***** DELETED IN THE DESTINATION PATH ***************************************
 OS_SourcePath=/
 OS_DestinationPath="/srv/samba/Documents_Charl/010_EncryptForCloudBackup\
 /ArchSystemBackups/ArchServer"
 OS_TarDestinationPath="/srv/samba/Documents_Charl/010_EncryptForCloudBackup\
 /ArchSystemBackups/ArchServerTarballs"
 
+# SPACE sperated list of locations to be excluded from systems backup
+# list Exclusions below are modified from Arch Wiki
+# https://wiki.archlinux.org/index.php/Full_system_backup_with_rsync
+OS_Exclusions="/dev /proc /sys /tmp /run /mnt /media /srv/samba /lost+found"
 
 # Path details for data mirror
 # There is no data copy as this is seperately taken care of by rsnapshot
 # ***** THIS IS A MIRROR FILES IN DESTINATION NOT IN SOURCE WILL BE DELETED ***
 MirrorSourcePath=/srv/samba/
 MirrorDestinationPath=/mnt/backups/mirror_overnight
-
-#File containing details of paths to be excluded from cloud backup
-CloudExclusionFile="/srv/samba/Documents_Charl/Computer_Technical\
-/Programming_Complete/Bash/OvernightJobs/CloudBackupExclusions.txt"
-
-#Path details for cloud copy (target does not get deleted even if it is not
-# in source)
-CloudCopySourcePath=/srv/samba/
-CloudCopyDestinationPath=AmazonDrive:Backups_Copy
-
-#Path details for cloud source
-CloudMirrorSourcePath=/srv/samba/
-CloudMirrorDestinationPath=AmazonDrive:Backups_Mirror
-
-
-# SPACE sperated list
-# list Exclusions below are modified from Arch Wiki
-# https://wiki.archlinux.org/index.php/Full_system_backup_with_rsync
-OS_Exclusions="/dev /proc /sys /tmp /run /mnt /media /srv/samba /lost+found"
-
 
 
 
@@ -163,77 +147,6 @@ mirror_data_local() {
 
 
 
-#====FUNCTION==================================================================
-#       Name:           copy_data_cloud
-#       Description:    Create cloud copy of data drive
-#                       (never deletes files at destination)
-#       Paramaters:     None
-#       Returns:        None
-#==============================================================================
-
-copy_data_cloud () {
-
-        # Timeout added to attempt to avoid exceding ISP data limits
-        # Specify config file as that for user charl as this script is run by
-        # root (for which no rclone config has been set up)
-        
-        # Smaller files < 50M
-        Log="$LogPath/$date.AmazonCopyBackupLog.txt"
-        ErrorLog="$LogPath/$date.AmazonCopyBackupErrorLog.txt"
-        timeout 2h rclone copy --checksum -v --max-size 50M \
-                --config=/home/charl/.rclone.conf \
-                --exclude-from $CloudExclusionFile \
-                $CloudCopySourcePath $CloudCopyDestinationPath \
-                >$Log 2>$ErrorLog
-        
-        # Larger files > 50M Copy one at a time (set transfers =1)
-        #Log="$LogPath/$date.AmazonCopyBackupLargeFileLog.txt"
-        #ErrorLog="$LogPath/$date.AmazonCopyBackupLargeFileErrorLog.txt"
-        #timeout 2h rclone copy --checksum -v --min-size 50M --transfers 1 \
-                #--config=/home/charl/.rclone.conf --exclude-from $CloudExclusionFile \
-                #$CloudCopySourcePath $CloudCopyDestinationPath >$Log 2>$ErrorLog
-        
-}
-
-
-
-
-
-#====FUNCTION==================================================================
-#       Name:           mirror_data_cloud
-#       Description:    Create cloud mirror of data drive
-#                       (deletes files at destination if not in source)
-#       Paramaters:     None
-#       Returns:        None
-#==============================================================================
-
-mirror_data_cloud () {
-        # Timeout added to attempt to avoid exceding ISP data limits
-        # Specify config file as that for user charl as this script is run by
-        # root (for which no rclone config has been set up)
-        
-        # Smaller files < 50M
-        Log="$LogPath/$date.AmazonMirrorBackupLog.txt"
-        ErrorLog="$LogPath/$date.AmazonMirrorBackupErrorLog.txt"
-        timeout 1h rclone sync --checksum -v --max-size 50M \
-                --config=/home/charl/.rclone.conf \
-                --exclude-from $CloudExclusionFile \
-                $CloudMirrorSourcePath $CloudMirrorDestinationPath \
-                >$Log 2>$ErrorLog
-        
-        # Larger files > 50M Copy one at a time (set transfers =1)
-        # Log="$LogPath/$date.AmazonMirrorBackupLargeFileLog.txt"
-        # ErrorLog="$LogPath/$date.AmazonMirrorBackupLargeFileErrorLog.txt"
-        # timeout 2h rclone sync --checksum -v --min-size 50M --transfers 1 \
-                #--config=/home/charl/.rclone.conf --exclude-from $CloudExclusionFile \
-                #$CloudMirrorSourcePath $CloudMirrorDestinationPath >$Log 2>$ErrorLog
-
-}
-
-
-
-
-
 #==============================================================================
 #                               MAIN PROGRAM
 #==============================================================================
@@ -245,7 +158,7 @@ DayOfMonth=$(date +%d)
 # Read script flags and execute individual processes if flags exist
 # http://wiki.bash-hackers.org/howto/getopts_tutorial
 FlagsFound=0
-while getopts "stlcm" opt; do
+while getopts "stl" opt; do
         case $opt in
         s)
                 system_mirror
@@ -261,14 +174,6 @@ while getopts "stlcm" opt; do
                 mirror_data_local
                 FlagsFound=1
                 ;;
-       # c)
-       #         copy_data_cloud
-       #         FlagsFound=1
-       #         ;;
-       # m)
-       #         mirror_data_cloud
-       #         FlagsFound=1
-       #         ;;
         \?)
                 echo "Invalid option: -$OPTARG" # >&2
                 exit 1
@@ -279,6 +184,8 @@ done
 
 # Run all scripts if no flags specified
 if [ $FlagsFound -eq 0 ]; then
-        echo "Run all scripts"
+        system_mirror
+        system_mirror_tarball
+        mirror_data_local
 fi
 
