@@ -1,28 +1,23 @@
 #!/bin/bash
 
 
-#!!!!!!!!!!!!!!!!!!!!!!!! INCOMPLETE WORK IN PROGRESS !!!!!!!!!!!!!!!!!!!!!!!!
-
 
 #==============================================================================
 #
 #       FILE:           BackupJobs
 #
-#       USAGE:
+#       DESCRIPTION:    Runs various data and server operating system backups 
+#                       *********** WARNING ********
+#                       includes mirrors which have potential
+#                       to delete data.   Make sure you understand
+#                       code and configuration options before running
 #
-#       DESCRIPTION:    Runs various local, cloud and system backups
 #
 #       DEPENDENCIES:   rsync
 #       
 #       AUTHOR:         Charl Potgieter
 #
 #==============================================================================
-
-# !!!!!!!!!!!!!!!!!!!!!!!!! TO DO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#
-#       TESTING
-#
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 #==============================================================================
@@ -38,8 +33,11 @@ LogPath=/srv/samba/Documents_Charl/Computer_Technical/Logs
 OS_SourcePath=/
 OS_DestinationPath="/srv/samba/Documents_Charl/010_EncryptForCloudBackup\
 /ArchSystemBackups/ArchServer"
+OS_USB_DestinationPath="/mnt/backups/usb_server_os"
 OS_TarDestinationPath="/srv/samba/Documents_Charl/010_EncryptForCloudBackup\
 /ArchSystemBackups/ArchServerTarballs"
+
+
 
 # SPACE sperated list of locations to be excluded from systems backup
 # list Exclusions below are modified from Arch Wiki
@@ -57,7 +55,7 @@ MirrorDestinationPath=/mnt/backups/mirror_overnight
 
 #====FUNCTION==================================================================
 #       Name:           system_mirror
-#       Description:    Create a system mirror (excluding data)
+#       Description:    Create a system mirror (excluding data on hard drive)
 #       Paramaters:     None
 #       Returns:        None
 #==============================================================================
@@ -80,7 +78,29 @@ system_mirror() {
 }
 
 
+#====FUNCTION==================================================================
+#       Name:           system_mirror_usb
+#       Description:    Create a system mirror (excluding data on usb)
+#       Paramaters:     None
+#       Returns:        None
+#==============================================================================
 
+system_mirror_USB() {
+     
+        Log="$LogPath/$date.ArchServerUSBBackupLog.txt"
+        ErrorLog="$LogPath/$date.ArchServerUSBBackupErrorLog.txt"
+
+        # Create an exclusion array.  Variable expanstion takes place after
+        # brace expanion so can't use a brace expansion solution
+        excl_array=()
+        for  i in $OS_Exclusions; do
+                excl_array+=(--exclude="$i" )
+        done
+
+        
+        rsync -aAXv --delete  "${excl_array[@]}" \
+                $OS_SourcePath $OS_USB_DestinationPath >$Log 2>$ErrorLog
+}
 
 
 
@@ -158,12 +178,17 @@ DayOfMonth=$(date +%d)
 # Read script flags and execute individual processes if flags exist
 # http://wiki.bash-hackers.org/howto/getopts_tutorial
 FlagsFound=0
-while getopts "stl" opt; do
+while getopts "sutl" opt; do
         case $opt in
         s)
                 system_mirror
                 FlagsFound=1
                 ;;
+        u)
+                system_mirror_USB
+                FlagsFound=1
+                ;;
+
         t)
                 # Force DayOfMonth to 1 so tarball runs irrespective of date
                 DayOfMonth=1
@@ -185,6 +210,7 @@ done
 # Run all scripts if no flags specified
 if [ $FlagsFound -eq 0 ]; then
         system_mirror
+        system_mirror_USB
         system_mirror_tarball
         mirror_data_local
 fi
